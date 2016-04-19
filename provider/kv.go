@@ -37,16 +37,17 @@ type KvTLS struct {
 }
 
 func (provider *Kv) watchKv(configurationChan chan<- types.ConfigMessage, prefix string, stop chan bool) {
+	events, err := provider.kvclient.WatchTree(provider.Prefix, make(chan struct{}) /* stop chan */)
+	if err != nil {
+		log.Errorf("Failed to WatchTree %s", err)
+		return
+	}
 	for {
-		events, err := provider.kvclient.WatchTree(provider.Prefix, make(chan struct{}) /* stop chan */)
-		if err != nil {
-			log.Errorf("Failed to WatchTree %s", err)
-			continue
-		}
 		select {
 		case <-stop:
 			return
-		case <-events:
+		case pair := <-events:
+			log.Debugf("%+v", pair)
 			configuration := provider.loadConfig()
 			if configuration != nil {
 				configurationChan <- types.ConfigMessage{
