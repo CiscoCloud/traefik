@@ -5,7 +5,7 @@
     weight = {{getWeight . $apps}}
 {{end}}
 
-[frontends]{{range .Applications}}
+[frontends]{{range $app := .Applications}}
   [frontends.frontend{{.ID | replace "/" "-"}}]
   backend = "backend{{getFrontendBackend .}}"
   passHostHeader = {{getPassHostHeader .}}
@@ -15,4 +15,10 @@
   {{end}}]
     [frontends.frontend{{.ID | replace "/" "-"}}.routes.route-host{{.ID | replace "/" "-"}}]
     rule = "{{getFrontendRule .}}"
+  {{if getLabels .}}
+  [frontends.frontend{{.ID | replace "/" "-"}}.labels]
+  {{range getLabels .}}
+  {{.}} = "{{getLabel $app .}}"
+  {{end}}
+  {{end}}
 {{end}}

@@ -3,8 +3,9 @@ package types
 import (
 	"errors"
 	"fmt"
-	"github.com/ryanuber/go-glob"
 	"strings"
+
+	"github.com/ryanuber/go-glob"
 )
 
 // Backend holds backend configuration.
@@ -48,11 +49,12 @@ type Route struct {
 
 // Frontend holds frontend configuration.
 type Frontend struct {
-	EntryPoints    []string         `json:"entryPoints,omitempty"`
-	Backend        string           `json:"backend,omitempty"`
-	Routes         map[string]Route `json:"routes,omitempty"`
-	PassHostHeader bool             `json:"passHostHeader,omitempty"`
-	Priority       int              `json:"priority"`
+	EntryPoints    []string          `json:"entryPoints,omitempty"`
+	Backend        string            `json:"backend,omitempty"`
+	Routes         map[string]Route  `json:"routes,omitempty"`
+	Labels         map[string]string `json:"labels,omitempty"`
+	PassHostHeader bool              `json:"passHostHeader,omitempty"`
+	Priority       int               `json:"priority"`
 }
 
 // LoadBalancerMethod holds the method of load balancing to use.

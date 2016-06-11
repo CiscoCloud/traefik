@@ -3,12 +3,14 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/containous/traefik/acme"
-	"github.com/containous/traefik/provider"
-	"github.com/containous/traefik/types"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/containous/traefik/acme"
+	"github.com/containous/traefik/middlewares"
+	"github.com/containous/traefik/provider"
+	"github.com/containous/traefik/types"
 )
 
 // TraefikConfiguration holds GlobalConfiguration and other stuff
@@ -22,7 +24,8 @@ type TraefikConfiguration struct {
 type GlobalConfiguration struct {
 	GraceTimeOut              int64                   `short:"g" description:"Configuration file to use (TOML)."`
 	Debug                     bool                    `short:"d" description:"Enable debug mode"`
-	AccessLogsFile            string                  `description:"Access logs file"`
+	AccessLog                 middlewares.AccessLog   `description: Access logs and Kafka configuration`
+	AccessLogsFile            string                  `description:"Access logs file"` // Legacy config of AccessLog.Filename
 	TraefikLogsFile           string                  `description:"Traefik logs file"`
 	LogLevel                  string                  `short:"l" description:"Log level"`
 	EntryPoints               EntryPoints             `description:"Entrypoints definition using format: --entryPoints='Name:http Address::8000 Redirect.EntryPoint:https' --entryPoints='Name:https Address::4442 TLS:tests/traefik.crt,tests/traefik.key'"`
@@ -297,7 +300,11 @@ func NewTraefikDefaultPointersConfiguration() *TraefikConfiguration {
 func NewTraefikConfiguration() *TraefikConfiguration {
 	return &TraefikConfiguration{
 		GlobalConfiguration: GlobalConfiguration{
-			GraceTimeOut:              10,
+			GraceTimeOut: 10,
+			AccessLog: middlewares.AccessLog{
+				Filename: "logs/access.log", // Default output filename
+				Topic:    "traefik",         // Default Kafka topic when Broker specified
+			},
 			AccessLogsFile:            "",
 			TraefikLogsFile:           "",
 			LogLevel:                  "ERROR",
