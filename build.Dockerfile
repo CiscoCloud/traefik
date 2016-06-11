@@ -1,17 +1,12 @@
-FROM golang:1.6.1-alpine
+FROM golang:1.6.2
 
-RUN apk update && apk add git bash gcc musl-dev \
-&& go get github.com/Masterminds/glide \
-&& go get github.com/mitchellh/gox \
+RUN go get github.com/Masterminds/glide \
 && go get github.com/jteeuwen/go-bindata/... \
 && go get github.com/golang/lint/golint \
 && go get github.com/kisielk/errcheck
 
 # Which docker version to test on
-ENV DOCKER_VERSION 1.10.1
-
-# enable GO15VENDOREXPERIMENT
-ENV GO15VENDOREXPERIMENT 1
+ARG DOCKER_VERSION=1.10.1
 
 # Download docker
 RUN set -ex; \

@@ -29,18 +29,18 @@ const DockerAPIVersion string = "1.21"
 
 // Docker holds configurations of the Docker provider.
 type Docker struct {
-	BaseProvider `mapstructure:",squash"`
-	Endpoint     string
-	Domain       string
-	TLS          *DockerTLS
+	BaseProvider
+	Endpoint string     `description:"Docker server endpoint. Can be a tcp or a unix socket endpoint"`
+	Domain   string     `description:"Default domain used"`
+	TLS      *DockerTLS `description:"Enable Docker TLS support"`
 }
 
 // DockerTLS holds TLS specific configurations
 type DockerTLS struct {
-	CA                 string
-	Cert               string
-	Key                string
-	InsecureSkipVerify bool
+	CA                 string `description:"TLS CA"`
+	Cert               string `description:"TLS cert"`
+	Key                string `description:"TLS key"`
+	InsecureSkipVerify bool   `description:"TLS insecure skip verify"`
 }
 
 func (provider *Docker) createClient() (client.APIClient, error) {
@@ -79,7 +79,8 @@ func (provider *Docker) createClient() (client.APIClient, error) {
 
 // Provide allows the provider to provide configurations to traefik
 // using the given configuration channel.
-func (provider *Docker) Provide(configurationChan chan<- types.ConfigMessage, pool *safe.Pool) error {
+func (provider *Docker) Provide(configurationChan chan<- types.ConfigMessage, pool *safe.Pool, constraints []types.Constraint) error {
+	provider.Constraints = append(provider.Constraints, constraints...)
 	// TODO register this routine in pool, and watch for stop channel
 	safe.Go(func() {
 		operation := func() error {
@@ -90,9 +91,11 @@ func (provider *Docker) Provide(configurationChan chan<- types.ConfigMessage, po
 				log.Errorf("Failed to create a client for docker, error: %s", err)
 				return err
 			}
-			version, err := dockerClient.ServerVersion(context.Background())
+
+			ctx := context.Background()
+			version, err := dockerClient.ServerVersion(ctx)
 			log.Debugf("Docker connection established with docker %s (API %s)", version.Version, version.APIVersion)
-			containers, err := listContainers(dockerClient)
+			containers, err := listContainers(ctx, dockerClient)
 			if err != nil {
 				log.Errorf("Failed to list containers for docker, error %s", err)
 				return err
@@ -103,7 +106,7 @@ func (provider *Docker) Provide(configurationChan chan<- types.ConfigMessage, po
 				Configuration: configuration,
 			}
 			if provider.Watch {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(ctx)
 				f := filters.NewArgs()
 				f.Add("type", "container")
 				options := dockertypes.EventsOptions{
@@ -112,11 +115,12 @@ func (provider *Docker) Provide(configurationChan chan<- types.ConfigMessage, po
 				eventHandler := events.NewHandler(events.ByAction)
 				startStopHandle := func(m eventtypes.Message) {
 					log.Debugf("Docker event received %+v", m)
-					containers, err := listContainers(dockerClient)
+					containers, err := listContainers(ctx, dockerClient)
 					if err != nil {
 						log.Errorf("Failed to list containers for docker, error %s", err)
 						// Call cancel to get out of the monitor
 						cancel()
+						return
 					}
 					configuration := provider.loadDockerConfig(containers)
 					if configuration != nil {
@@ -160,11 +164,13 @@ func (provider *Docker) Provide(configurationChan chan<- types.ConfigMessage, po
 func (provider *Docker) loadDockerConfig(containersInspected []dockertypes.ContainerJSON) *types.Configuration {
 	var DockerFuncMap = template.FuncMap{
 		"getBackend":        provider.getBackend,
+		"getIPAddress":      provider.getIPAddress,
 		"getPort":           provider.getPort,
 		"getWeight":         provider.getWeight,
 		"getDomain":         provider.getDomain,
 		"getProtocol":       provider.getProtocol,
 		"getPassHostHeader": provider.getPassHostHeader,
+		"getPriority":       provider.getPriority,
 		"getEntryPoints":    provider.getEntryPoints,
 		"getFrontendRule":   provider.getFrontendRule,
 		"replace":           replace,
@@ -196,11 +202,11 @@ func (provider *Docker) loadDockerConfig(containersInspected []dockertypes.Conta
 }
 
 func containerFilter(container dockertypes.ContainerJSON) bool {
-	if len(container.NetworkSettings.Ports) == 0 {
-		log.Debugf("Filtering container without port %s", container.Name)
+	_, err := strconv.Atoi(container.Config.Labels["traefik.port"])
+	if len(container.NetworkSettings.Ports) == 0 && err != nil {
+		log.Debugf("Filtering container without port and no traefik.port label %s", container.Name)
 		return false
 	}
-	_, err := strconv.Atoi(container.Config.Labels["traefik.port"])
 	if len(container.NetworkSettings.Ports) > 1 && err != nil {
 		log.Debugf("Filtering container with more than 1 port and no traefik.port label %s", container.Name)
 		return false
@@ -234,7 +240,7 @@ func (provider *Docker) getFrontendRule(container dockertypes.ContainerJSON) str
 	if label, err := getLabel(container, "traefik.frontend.rule"); err == nil {
 		return label
 	}
-	return "Host:" + getEscapedName(container.Name) + "." + provider.Domain
+	return "Host:" + provider.getSubDomain(container.Name) + "." + provider.Domain
 }
 
 func (provider *Docker) getBackend(container dockertypes.ContainerJSON) string {
@@ -242,6 +248,22 @@ func (provider *Docker) getBackend(container dockertypes.ContainerJSON) string {
 		return label
 	}
 	return normalize(container.Name)
+}
+
+func (provider *Docker) getIPAddress(container dockertypes.ContainerJSON) string {
+	if label, err := getLabel(container, "traefik.docker.network"); err == nil && label != "" {
+		networks := container.NetworkSettings.Networks
+		if networks != nil {
+			network := networks[label]
+			if network != nil {
+				return network.IPAddress
+			}
+		}
+	}
+	for _, network := range container.NetworkSettings.Networks {
+		return network.IPAddress
+	}
+	return ""
 }
 
 func (provider *Docker) getPort(container dockertypes.ContainerJSON) string {
@@ -279,7 +301,14 @@ func (provider *Docker) getPassHostHeader(container dockertypes.ContainerJSON) s
 	if passHostHeader, err := getLabel(container, "traefik.frontend.passHostHeader"); err == nil {
 		return passHostHeader
 	}
-	return "false"
+	return "true"
+}
+
+func (provider *Docker) getPriority(container dockertypes.ContainerJSON) string {
+	if priority, err := getLabel(container, "traefik.frontend.priority"); err == nil {
+		return priority
+	}
+	return "0"
 }
 
 func (provider *Docker) getEntryPoints(container dockertypes.ContainerJSON) []string {
@@ -314,8 +343,8 @@ func getLabels(container dockertypes.ContainerJSON, labels []string) (map[string
 	return foundLabels, globalErr
 }
 
-func listContainers(dockerClient client.APIClient) ([]dockertypes.ContainerJSON, error) {
-	containerList, err := dockerClient.ContainerList(context.Background(), dockertypes.ContainerListOptions{})
+func listContainers(ctx context.Context, dockerClient client.APIClient) ([]dockertypes.ContainerJSON, error) {
+	containerList, err := dockerClient.ContainerList(ctx, dockertypes.ContainerListOptions{})
 	if err != nil {
 		return []dockertypes.ContainerJSON{}, err
 	}
@@ -323,11 +352,17 @@ func listContainers(dockerClient client.APIClient) ([]dockertypes.ContainerJSON,
 
 	// get inspect containers
 	for _, container := range containerList {
-		containerInspected, err := dockerClient.ContainerInspect(context.Background(), container.ID)
+		containerInspected, err := dockerClient.ContainerInspect(ctx, container.ID)
 		if err != nil {
 			log.Warnf("Failed to inpsect container %s, error: %s", container.ID, err)
+		} else {
+			containersInspected = append(containersInspected, containerInspected)
 		}
-		containersInspected = append(containersInspected, containerInspected)
 	}
 	return containersInspected, nil
+}
+
+// Escape beginning slash "/", convert all others to dash "-"
+func (provider *Docker) getSubDomain(name string) string {
+	return strings.Replace(strings.TrimPrefix(name, "/"), "/", "-", -1)
 }

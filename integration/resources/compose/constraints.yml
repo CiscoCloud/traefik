@@ -10,16 +10,8 @@ consul:
     - "8301"
     - "8301/udp"
     - "8302"
-    - "8302/udp"  
-    
-whoami1:
-  image: emilevauge/whoami
-  
-whoami2:
-  image: emilevauge/whoami
-  
-whoami3:
-  image: emilevauge/whoami
-  
-whoami4:
-  image: emilevauge/whoami
+    - "8302/udp"
+nginx:
+  image: nginx
+  ports:
+    - "8881:80"

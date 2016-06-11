@@ -203,6 +203,82 @@ func TestDockerGetBackend(t *testing.T) {
 	}
 }
 
+func TestDockerGetIPAddress(t *testing.T) { // TODO
+	provider := &Docker{}
+
+	containers := []struct {
+		container docker.ContainerJSON
+		expected  string
+	}{
+		{
+			container: docker.ContainerJSON{
+				ContainerJSONBase: &docker.ContainerJSONBase{
+					Name: "bar",
+				},
+				Config: &container.Config{},
+				NetworkSettings: &docker.NetworkSettings{
+					Networks: map[string]*network.EndpointSettings{
+						"testnet": {
+							IPAddress: "10.11.12.13",
+						},
+					},
+				},
+			},
+			expected: "10.11.12.13",
+		},
+		{
+			container: docker.ContainerJSON{
+				ContainerJSONBase: &docker.ContainerJSONBase{
+					Name: "bar",
+				},
+				Config: &container.Config{
+					Labels: map[string]string{
+						"traefik.docker.network": "testnet",
+					},
+				},
+				NetworkSettings: &docker.NetworkSettings{
+					Networks: map[string]*network.EndpointSettings{
+						"nottestnet": {
+							IPAddress: "10.11.12.13",
+						},
+					},
+				},
+			},
+			expected: "10.11.12.13",
+		},
+		{
+			container: docker.ContainerJSON{
+				ContainerJSONBase: &docker.ContainerJSONBase{
+					Name: "bar",
+				},
+				Config: &container.Config{
+					Labels: map[string]string{
+						"traefik.docker.network": "testnet2",
+					},
+				},
+				NetworkSettings: &docker.NetworkSettings{
+					Networks: map[string]*network.EndpointSettings{
+						"testnet1": {
+							IPAddress: "10.11.12.13",
+						},
+						"testnet2": {
+							IPAddress: "10.11.12.14",
+						},
+					},
+				},
+			},
+			expected: "10.11.12.14",
+		},
+	}
+
+	for _, e := range containers {
+		actual := provider.getIPAddress(e.container)
+		if actual != e.expected {
+			t.Fatalf("expected %q, got %q", e.expected, actual)
+		}
+	}
+}
+
 func TestDockerGetPort(t *testing.T) {
 	provider := &Docker{}
 
@@ -250,6 +326,20 @@ func TestDockerGetPort(t *testing.T) {
 		// 	},
 		// 	expected: "80",
 		// },
+		{
+			container: docker.ContainerJSON{
+				ContainerJSONBase: &docker.ContainerJSONBase{
+					Name: "test",
+				},
+				Config: &container.Config{
+					Labels: map[string]string{
+						"traefik.port": "8080",
+					},
+				},
+				NetworkSettings: &docker.NetworkSettings{},
+			},
+			expected: "8080",
+		},
 		{
 			container: docker.ContainerJSON{
 				ContainerJSONBase: &docker.ContainerJSONBase{
@@ -401,7 +491,6 @@ func TestDockerGetProtocol(t *testing.T) {
 
 func TestDockerGetPassHostHeader(t *testing.T) {
 	provider := &Docker{}
-
 	containers := []struct {
 		container docker.ContainerJSON
 		expected  string
@@ -413,7 +502,7 @@ func TestDockerGetPassHostHeader(t *testing.T) {
 				},
 				Config: &container.Config{},
 			},
-			expected: "false",
+			expected: "true",
 		},
 		{
 			container: docker.ContainerJSON{
@@ -422,11 +511,11 @@ func TestDockerGetPassHostHeader(t *testing.T) {
 				},
 				Config: &container.Config{
 					Labels: map[string]string{
-						"traefik.frontend.passHostHeader": "true",
+						"traefik.frontend.passHostHeader": "false",
 					},
 				},
 			},
-			expected: "true",
+			expected: "false",
 		},
 	}
 
@@ -744,8 +833,9 @@ func TestDockerLoadDockerConfig(t *testing.T) {
 			},
 			expectedFrontends: map[string]*types.Frontend{
 				"frontend-Host-test-docker-localhost": {
-					Backend:     "backend-test",
-					EntryPoints: []string{},
+					Backend:        "backend-test",
+					PassHostHeader: true,
+					EntryPoints:    []string{},
 					Routes: map[string]types.Route{
 						"route-frontend-Host-test-docker-localhost": {
 							Rule: "Host:test.docker.localhost",
@@ -816,8 +906,9 @@ func TestDockerLoadDockerConfig(t *testing.T) {
 			},
 			expectedFrontends: map[string]*types.Frontend{
 				"frontend-Host-test1-docker-localhost": {
-					Backend:     "backend-foobar",
-					EntryPoints: []string{"http", "https"},
+					Backend:        "backend-foobar",
+					PassHostHeader: true,
+					EntryPoints:    []string{"http", "https"},
 					Routes: map[string]types.Route{
 						"route-frontend-Host-test1-docker-localhost": {
 							Rule: "Host:test1.docker.localhost",
@@ -825,8 +916,9 @@ func TestDockerLoadDockerConfig(t *testing.T) {
 					},
 				},
 				"frontend-Host-test2-docker-localhost": {
-					Backend:     "backend-foobar",
-					EntryPoints: []string{},
+					Backend:        "backend-foobar",
+					PassHostHeader: true,
+					EntryPoints:    []string{},
 					Routes: map[string]types.Route{
 						"route-frontend-Host-test2-docker-localhost": {
 							Rule: "Host:test2.docker.localhost",

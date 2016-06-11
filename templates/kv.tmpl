@@ -39,7 +39,8 @@
     {{$entryPoints := SplitGet . "/entrypoints"}}
     [frontends."{{$frontend}}"]
     backend = "{{Get "" . "/backend"}}"
-    passHostHeader = {{Get "false" . "/passHostHeader"}}
+    passHostHeader = {{Get "true" . "/passHostHeader"}}
+    priority = {{Get "0" . "/priority"}}
     entryPoints = [{{range $entryPoints}}
       "{{.}}",
     {{end}}]

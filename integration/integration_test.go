@@ -13,7 +13,7 @@ import (
 	"github.com/containous/traefik/integration/utils"
 	"github.com/go-check/check"
 
-	compose "github.com/vdemeester/libkermit/compose/check"
+	"github.com/libkermit/docker-check/compose"
 	checker "github.com/vdemeester/shakers"
 )
 
@@ -31,6 +31,7 @@ func init() {
 	check.Suite(&ConsulCatalogSuite{})
 	check.Suite(&EtcdSuite{})
 	check.Suite(&MarathonSuite{})
+	check.Suite(&ConstraintSuite{})
 }
 
 var traefikBinary = "../dist/traefik"
@@ -64,7 +65,11 @@ func (s *BaseSuite) adaptFileForHost(c *check.C, path string) string {
 		// Default docker socket
 		dockerHost = "unix:///var/run/docker.sock"
 	}
+	tempObjects := struct{ DockerHost string }{dockerHost}
+	return s.adaptFile(c, path, tempObjects)
+}
 
+func (s *BaseSuite) adaptFile(c *check.C, path string, tempObjects interface{}) string {
 	// Load file
 	tmpl, err := template.ParseFiles(path)
 	c.Assert(err, checker.IsNil)
@@ -74,7 +79,7 @@ func (s *BaseSuite) adaptFileForHost(c *check.C, path string) string {
 	c.Assert(err, checker.IsNil)
 	defer tmpFile.Close()
 
-	err = tmpl.ExecuteTemplate(tmpFile, prefix, struct{ DockerHost string }{dockerHost})
+	err = tmpl.ExecuteTemplate(tmpFile, prefix, tempObjects)
 	c.Assert(err, checker.IsNil)
 	err = tmpFile.Sync()
 

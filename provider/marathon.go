@@ -3,6 +3,7 @@ package provider
 import (
 	"errors"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -20,13 +21,14 @@ import (
 
 // Marathon holds configuration of the Marathon provider.
 type Marathon struct {
-	BaseProvider     `mapstructure:",squash"`
-	Endpoint         string
-	Domain           string
-	ExposedByDefault bool
-	Basic            *MarathonBasic
-	TLS              *tls.Config
-	marathonClient   marathon.Marathon
+	BaseProvider
+	Endpoint           string `description:"Marathon server endpoint. You can also specify multiple endpoint for Marathon"`
+	Domain             string `description:"Default domain used"`
+	ExposedByDefault   bool   `description:"Expose Marathon apps by default"`
+	GroupsAsSubDomains bool   `description:"Convert Marathon groups to subdomains"`
+	Basic              *MarathonBasic
+	TLS                *tls.Config
+	marathonClient     marathon.Marathon
 }
 
 // MarathonBasic holds basic authentication specific configurations
@@ -36,13 +38,14 @@ type MarathonBasic struct {
 }
 
 type lightMarathonClient interface {
-	Applications(url.Values) (*marathon.Applications, error)
 	AllTasks(v url.Values) (*marathon.Tasks, error)
+	Applications(url.Values) (*marathon.Applications, error)
 }
 
 // Provide allows the provider to provide configurations to traefik
 // using the given configuration channel.
-func (provider *Marathon) Provide(configurationChan chan<- types.ConfigMessage, pool *safe.Pool) error {
+func (provider *Marathon) Provide(configurationChan chan<- types.ConfigMessage, pool *safe.Pool, constraints []types.Constraint) error {
+	provider.Constraints = append(provider.Constraints, constraints...)
 	operation := func() error {
 		config := marathon.NewDefaultConfig()
 		config.URL = provider.Endpoint
@@ -113,6 +116,7 @@ func (provider *Marathon) loadMarathonConfig() *types.Configuration {
 		"getDomain":          provider.getDomain,
 		"getProtocol":        provider.getProtocol,
 		"getPassHostHeader":  provider.getPassHostHeader,
+		"getPriority":        provider.getPriority,
 		"getEntryPoints":     provider.getEntryPoints,
 		"getFrontendRule":    provider.getFrontendRule,
 		"getFrontendBackend": provider.getFrontendBackend,
@@ -316,7 +320,14 @@ func (provider *Marathon) getPassHostHeader(application marathon.Application) st
 	if passHostHeader, err := provider.getLabel(application, "traefik.frontend.passHostHeader"); err == nil {
 		return passHostHeader
 	}
-	return "false"
+	return "true"
+}
+
+func (provider *Marathon) getPriority(application marathon.Application) string {
+	if priority, err := provider.getLabel(application, "traefik.frontend.priority"); err == nil {
+		return priority
+	}
+	return "0"
 }
 
 func (provider *Marathon) getEntryPoints(application marathon.Application) []string {
@@ -340,7 +351,7 @@ func (provider *Marathon) getFrontendRule(application marathon.Application) stri
 	if label, err := provider.getLabel(application, "traefik.frontend.rule"); err == nil {
 		return label
 	}
-	return "Host:" + getEscapedName(application.ID) + "." + provider.Domain
+	return "Host:" + provider.getSubDomain(application.ID) + "." + provider.Domain
 }
 
 func (provider *Marathon) getBackend(task marathon.Task, applications []marathon.Application) string {
@@ -357,4 +368,14 @@ func (provider *Marathon) getFrontendBackend(application marathon.Application) s
 		return label
 	}
 	return replace("/", "-", application.ID)
+}
+
+func (provider *Marathon) getSubDomain(name string) string {
+	if provider.GroupsAsSubDomains {
+		splitedName := strings.Split(strings.TrimPrefix(name, "/"), "/")
+		sort.Sort(sort.Reverse(sort.StringSlice(splitedName)))
+		reverseName := strings.Join(splitedName, ".")
+		return reverseName
+	}
+	return strings.Replace(strings.TrimPrefix(name, "/"), "/", "-", -1)
 }

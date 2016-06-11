@@ -122,6 +122,12 @@
 ## ACME (Let's Encrypt) configuration
 
 ```toml
+# Sample entrypoint configuration when using ACME
+[entryPoints]
+  [entryPoints.https]
+  address = ":443"
+    [entryPoints.https.tls]
+
 # Enable ACME (Let's Encrypt): automatic SSL
 #
 # Optional
@@ -166,6 +172,7 @@ entryPoint = "https"
 
 # Domains list
 # You can provide SANs (alternative domains) to each main domain
+# All domains must have A/AAAA records pointing to Traefik
 # WARNING, Take note that Let's Encrypt have rate limiting: https://community.letsencrypt.org/t/quick-start-guide/1631
 # Each domain & SANs will lead to a certificate request.
 #
@@ -187,6 +194,51 @@ entryPoint = "https"
 [[acme.domains]]
    main = "local4.com"
 ```
+
+## Constraints
+
+In a micro-service architecture, with a central service discovery, setting constraints limits Træfɪk scope to a smaller number of routes.
+
+Træfɪk filters services according to service attributes/tags set in your configuration backends.
+
+Supported backends:
+
+- Consul Catalog
+
+Supported filters:
+
+- ```tag```
+
+```
+# Constraints definition
+
+#
+# Optional
+#
+
+# Simple matching constraint
+# constraints = ["tag==api"]
+
+# Simple mismatching constraint
+# constraints = ["tag!=api"]
+
+# Globbing
+# constraints = ["tag==us-*"]
+
+# Backend-specific constraint
+# [consulCatalog]
+#   endpoint = 127.0.0.1:8500
+#   constraints = ["tag==api"]
+
+# Multiple constraints
+#   - "tag==" must match with at least one tag
+#   - "tag!=" must match with none of tags
+# constraints = ["tag!=us-*", "tag!=asia-*"]
+# [consulCatalog]
+#   endpoint = 127.0.0.1:8500
+#   constraints = ["tag==api", "tag!=v*-beta"]
+```
+
 
 # Configuration backends
 
@@ -249,6 +301,7 @@ defaultEntryPoints = ["http", "https"]
   [frontends.frontend2]
   backend = "backend1"
   passHostHeader = true
+  priority = 10
   entrypoints = ["https"] # overrides defaultEntryPoints
     [frontends.frontend2.routes.test_1]
     rule = "Host:{subdomain:[a-z]+}.localhost"
@@ -315,6 +368,7 @@ filename = "rules.toml"
   [frontends.frontend2]
   backend = "backend1"
   passHostHeader = true
+  priority = 10
   entrypoints = ["https"] # overrides defaultEntryPoints
     [frontends.frontend2.routes.test_1]
     rule = "Host:{subdomain:[a-z]+}.localhost"
@@ -531,8 +585,10 @@ Labels can be used on containers to override default behaviour:
 - `traefik.enable=false`: disable this container in Træfɪk
 - `traefik.frontend.rule=Host:test.traefik.io`: override the default frontend rule (Default: `Host:{containerName}.{domain}`).
 - `traefik.frontend.passHostHeader=true`: forward client `Host` header to the backend.
+- `traefik.frontend.priority=10`: override default frontend priority
 - `traefik.frontend.entryPoints=http,https`: assign this frontend to entry points `http` and `https`. Overrides `defaultEntryPoints`.
-* `traefik.domain=traefik.localhost`: override the default domain
+- `traefik.domain=traefik.localhost`: override the default domain
+- `traefik.docker.network`: Set the docker network to use for connections to this container
 
 
 ## Marathon backend
@@ -583,7 +639,16 @@ domain = "marathon.localhost"
 # Optional
 # Default: false
 #
-# ExposedByDefault = true
+# exposedByDefault = true
+
+# Convert Marathon groups to subdomains
+# Default behavior: /foo/bar/myapp => foo-bar-myapp.{defaultDomain}
+# with groupsAsSubDomains enabled: /foo/bar/myapp => myapp.bar.foo.{defaultDomain}
+#
+# Optional
+# Default: false
+#
+# groupsAsSubDomains = true
 
 # Enable Marathon basic authentication
 #
@@ -611,8 +676,9 @@ Labels can be used on containers to override default behaviour:
 - `traefik.enable=false`: disable this application in Træfɪk
 - `traefik.frontend.rule=Host:test.traefik.io`: override the default frontend rule (Default: `Host:{containerName}.{domain}`).
 - `traefik.frontend.passHostHeader=true`: forward client `Host` header to the backend.
+- `traefik.frontend.priority=10`: override default frontend priority
 - `traefik.frontend.entryPoints=http,https`: assign this frontend to entry points `http` and `https`. Overrides `defaultEntryPoints`.
-* `traefik.domain=traefik.localhost`: override the default domain
+- `traefik.domain=traefik.localhost`: override the default domain
 
 
 ## Kubernetes Ingress backend
@@ -637,11 +703,16 @@ Træfɪk can be configured to use Kubernetes Ingress as a backend configuration:
 # and KUBERNETES_SERVICE_PORT_HTTPS as endpoint
 # Secure token will be found in /var/run/secrets/kubernetes.io/serviceaccount/token
 # and SSL CA cert in /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-# 
+#
 # Optional
 #
 # endpoint = "http://localhost:8080"
+# namespaces = ["default","production"]
 ```
+
+Annotations can be used on containers to override default behaviour for the whole Ingress resource:
+
+- `traefik.frontend.rule.type: PathPrefixStrip`: override the default frontend rule type (Default: `PathPrefix`).
 
 You can find here an example [ingress](https://raw.githubusercontent.com/containous/traefik/master/examples/k8s.ingress.yaml) and [replication controller](https://raw.githubusercontent.com/containous/traefik/master/examples/k8s.rc.yaml).
 
@@ -729,6 +800,13 @@ domain = "consul.localhost"
 # Optional
 #
 prefix = "traefik"
+
+# Constraint on Consul catalog tags
+#
+# Optional
+#
+constraints = ["tag==api", "tag==he*ld"]
+# Matching with containers having this tag: "traefik.tags=api,helloworld"
 ```
 
 This backend will create routes matching on hostname based on the service name
@@ -736,14 +814,15 @@ used in consul.
 
 Additional settings can be defined using Consul Catalog tags:
 
-- ```traefik.enable=false```: disable this container in Træfɪk
-- ```traefik.protocol=https```: override the default `http` protocol
-- ```traefik.backend.weight=10```: assign this weight to the container
-- ```traefik.backend.circuitbreaker=NetworkErrorRatio() > 0.5```
-- ```traefik.backend.loadbalancer=drr```: override the default load balancing mode
-- ```traefik.frontend.rule=Host:test.traefik.io```: override the default frontend rule (Default: `Host:{containerName}.{domain}`).
-- ```traefik.frontend.passHostHeader=true```: forward client `Host` header to the backend.
-- ```traefik.frontend.entryPoints=http,https```: assign this frontend to entry points `http` and `https`. Overrides `defaultEntryPoints`.
+- `traefik.enable=false`: disable this container in Træfɪk
+- `traefik.protocol=https`: override the default `http` protocol
+- `traefik.backend.weight=10`: assign this weight to the container
+- `traefik.backend.circuitbreaker=NetworkErrorRatio() > 0.5`
+- `traefik.backend.loadbalancer=drr`: override the default load balancing mode
+- `traefik.frontend.rule=Host:test.traefik.io`: override the default frontend rule (Default: `Host:{containerName}.{domain}`).
+- `traefik.frontend.passHostHeader=true`: forward client `Host` header to the backend.
+- `traefik.frontend.priority=10`: override default frontend priority
+- `traefik.frontend.entryPoints=http,https`: assign this frontend to entry points `http` and `https`. Overrides `defaultEntryPoints`.
 
 ## Etcd backend
 
@@ -917,12 +996,13 @@ The Keys-Values structure should look (using `prefix = "/traefik"`):
 
 - frontend 2
 
-| Key                                                | Value        |
-|----------------------------------------------------|--------------|
-| `/traefik/frontends/frontend2/backend`             | `backend1`   |
-| `/traefik/frontends/frontend2/passHostHeader`      | `true`       |
-| `/traefik/frontends/frontend2/entrypoints`         | `http,https` |
-| `/traefik/frontends/frontend2/routes/test_2/rule`  | `Path:/test` |
+| Key                                                | Value              |
+|----------------------------------------------------|--------------------|
+| `/traefik/frontends/frontend2/backend`             | `backend1`         |
+| `/traefik/frontends/frontend2/passHostHeader`      | `true`             |
+| `/traefik/frontends/frontend2/priority`            | `10`               |
+| `/traefik/frontends/frontend2/entrypoints`         | `http,https`       |
+| `/traefik/frontends/frontend2/routes/test_2/rule`  | `PathPrefix:/test` |
 
 ## Atomic configuration changes
 
@@ -961,4 +1041,3 @@ Once the `/traefik/alias` key is updated, the new `/traefik_configurations/2` co
 | `/traefik_configurations/2/backends/backend1/servers/server2/weight`    | `5`                        |
 
 Note that Træfɪk *will not watch for key changes in the `/traefik_configurations` prefix*. It will only watch for changes in the `/traefik` prefix. Further, if the `/traefik/alias` key is set, all other sibling keys with the `/traefik` prefix are ignored.
-

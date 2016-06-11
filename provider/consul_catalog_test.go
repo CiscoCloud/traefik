@@ -154,6 +154,17 @@ func TestConsulCatalogGetBackendName(t *testing.T) {
 			},
 			expected: "api--10-0-0-1--80--traefik-weight-42--traefik-enable-true--1",
 		},
+		{
+			node: &api.ServiceEntry{
+				Service: &api.AgentService{
+					Service: "api",
+					Address: "10.0.0.1",
+					Port:    80,
+					Tags:    []string{"a funny looking tag"},
+				},
+			},
+			expected: "api--10-0-0-1--80--a-funny-looking-tag--2",
+		},
 	}
 
 	for i, e := range services {
@@ -225,7 +236,8 @@ func TestConsulCatalogBuildConfig(t *testing.T) {
 			},
 			expectedFrontends: map[string]*types.Frontend{
 				"frontend-test": {
-					Backend: "backend-test",
+					Backend:        "backend-test",
+					PassHostHeader: true,
 					Routes: map[string]types.Route{
 						"route-host-test": {
 							Rule: "Host:test.localhost",
