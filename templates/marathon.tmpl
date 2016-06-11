@@ -18,7 +18,7 @@
   {{if getLabels .}}
   [frontends.frontend{{.ID | replace "/" "-"}}.labels]
   {{range getLabels .}}
-  {{.}} = "{{getLabel $app .}}"
+  "{{.}}" = "{{getLabel $app .}}"
   {{end}}
   {{end}}
 {{end}}
