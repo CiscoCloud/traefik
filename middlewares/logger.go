@@ -100,6 +100,7 @@ type logInfoResponseWriter struct {
 
 // NewLogger returns a new Logger instance with either or both of an output file and a Kafka producer
 func NewLogger(accessLog AccessLog) *Logger {
+	log.Debugf("NewLogger: %#v", accessLog)
 	logger := Logger{}
 	if len(accessLog.Filename) > 0 {
 		if fi, err := os.OpenFile(accessLog.Filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666); err != nil {

@@ -77,14 +77,6 @@ func NewServer(globalConfiguration GlobalConfiguration) *Server {
 	currentConfigurations := make(configs)
 	server.currentConfigurations.Set(currentConfigurations)
 	server.globalConfiguration = globalConfiguration
-	if len(globalConfiguration.AccessLogsFile) > 0 {
-		// Support legacy AccessLogsFile configuration
-		if len(globalConfiguration.AccessLog.Filename) > 0 {
-			log.Errorf("AccessLogsFile ignored when AccessLog.Filename specified")
-		} else {
-			globalConfiguration.AccessLog.Filename = globalConfiguration.AccessLogsFile
-		}
-	}
 	server.loggerMiddleware = middlewares.NewLogger(globalConfiguration.AccessLog)
 
 	return server

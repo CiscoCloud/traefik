@@ -3,13 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/containous/flaeg"
-	"github.com/containous/staert"
-	"github.com/containous/traefik/acme"
-	"github.com/containous/traefik/middlewares"
-	"github.com/containous/traefik/provider"
-	"github.com/containous/traefik/types"
 	fmtlog "log"
 	"net/http"
 	"os"
@@ -17,6 +10,14 @@ import (
 	"runtime"
 	"strings"
 	"text/template"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/containous/flaeg"
+	"github.com/containous/staert"
+	"github.com/containous/traefik/acme"
+	"github.com/containous/traefik/middlewares"
+	"github.com/containous/traefik/provider"
+	"github.com/containous/traefik/types"
 )
 
 var versionTemplate = `Version:      {{.Version}}
@@ -108,6 +109,15 @@ Complete documentation is available at https://traefik.io`,
 
 	traefikConfiguration.ConfigFile = toml.ConfigFileUsed()
 
+	// Support legacy AccessLogsFile configuration
+	if len(traefikConfiguration.AccessLogsFile) > 0 {
+		if len(traefikConfiguration.AccessLog.Filename) > 0 {
+			log.Errorf("AccessLogsFile ignored when AccessLog.Filename specified")
+		} else {
+			traefikConfiguration.AccessLog.Filename = traefikConfiguration.AccessLogsFile
+		}
+	}
+
 	if err := s.Run(); err != nil {
 		fmtlog.Println(err)
 		os.Exit(-1)
@@ -123,7 +133,7 @@ func run(traefikConfiguration *TraefikConfiguration) {
 	globalConfiguration := traefikConfiguration.GlobalConfiguration
 
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = globalConfiguration.MaxIdleConnsPerHost
-	loggerMiddleware := middlewares.NewLogger(globalConfiguration.AccessLogsFile)
+	loggerMiddleware := middlewares.NewLogger(globalConfiguration.AccessLog)
 	defer loggerMiddleware.Close()
 
 	if globalConfiguration.File != nil && len(globalConfiguration.File.Filename) == 0 {
