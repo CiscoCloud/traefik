@@ -221,7 +221,7 @@ func (fblh frontendBackendLoggingHandler) ServeHTTP(rw http.ResponseWriter, req 
 				}
 			}
 			err := fblh.writeMetric(&MetricSpec{
-				Name:       "elapsedMs-traefik",
+				Name:       "traefik.http_response.time_ms",
 				Dimensions: dimensions,
 				Timestamp:  timestamp,
 				Value:      uint64(elapsed / 1000000),
@@ -230,13 +230,13 @@ func (fblh frontendBackendLoggingHandler) ServeHTTP(rw http.ResponseWriter, req 
 				metricName := ""
 				switch {
 				case status < 300:
-					metricName = "2xx"
+					metricName = "traefik.http_status.2xx"
 				case status < 400:
-					metricName = "3xx"
+					metricName = "traefik.http_status.3xx"
 				case status < 500:
-					metricName = "4xx"
+					metricName = "traefik.http_status.4xx"
 				default:
-					metricName = "5xx"
+					metricName = "traefik.http_status.5xx"
 				}
 				fblh.writeMetric(&MetricSpec{
 					Name:       metricName,
