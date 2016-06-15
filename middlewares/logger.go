@@ -220,13 +220,13 @@ func (fblh frontendBackendLoggingHandler) ServeHTTP(rw http.ResponseWriter, req 
 					dimensions[dimension] = labels[label]
 				}
 			}
-			err := fblh.writeMetric(&MetricSpec{
+			go fblh.writeMetric(&MetricSpec{
 				Name:       "traefik.http_response.time_ms",
 				Dimensions: dimensions,
 				Timestamp:  timestamp,
 				Value:      uint64(elapsed / 1000000),
 			})
-			if err == nil && status >= 200 && status < 600 {
+			if status >= 200 && status < 600 {
 				metricName := ""
 				switch {
 				case status < 300:
@@ -238,7 +238,7 @@ func (fblh frontendBackendLoggingHandler) ServeHTTP(rw http.ResponseWriter, req 
 				default:
 					metricName = "traefik.http_status.5xx"
 				}
-				fblh.writeMetric(&MetricSpec{
+				go fblh.writeMetric(&MetricSpec{
 					Name:       metricName,
 					Dimensions: dimensions,
 					Timestamp:  timestamp,
@@ -252,7 +252,7 @@ func (fblh frontendBackendLoggingHandler) ServeHTTP(rw http.ResponseWriter, req 
 /**
  * Write a metric to Kafka
  */
-func (fblh frontendBackendLoggingHandler) writeMetric(metric *MetricSpec) (e error) {
+func (fblh frontendBackendLoggingHandler) writeMetric(metric *MetricSpec) {
 	monascaSpec := MonascaSpec{
 		Metric: *metric,
 		Meta: MetaSpec{
@@ -261,8 +261,7 @@ func (fblh frontendBackendLoggingHandler) writeMetric(metric *MetricSpec) (e err
 		CreationTime: metric.Timestamp,
 	}
 	if b, err := json.Marshal(monascaSpec); err != nil {
-		e = fmt.Errorf("Can't marshal metric %#v: %s", monascaSpec, err.Error())
-		log.Errorf(e.Error())
+		log.Errorf("Can't marshal metric %#v: %s", monascaSpec, err.Error())
 	} else {
 		msg := &sarama.ProducerMessage{
 			Topic: fblh.logger.topic,
@@ -270,13 +269,11 @@ func (fblh frontendBackendLoggingHandler) writeMetric(metric *MetricSpec) (e err
 		}
 		select {
 		case (*fblh.logger.kafkaProducer).Input() <- msg:
-			log.Debugf("Wrote metric %s=%v for %s", metric.Name, metric.Value, metric.Dimensions["frontend"])
+			log.Debugf("Kafka write OK for %s metric %s=%v", metric.Dimensions["frontend"], metric.Name, metric.Value)
 		case err := <-(*fblh.logger.kafkaProducer).Errors():
-			e = fmt.Errorf("Kafka write for %s failed: %s", metric.Dimensions["frontend"], err.Error())
-			log.Errorf(e.Error())
+			log.Errorf("Kafka write failed for %s metric %s=%v: %s", metric.Dimensions["frontend"], metric.Name, metric.Value, err.Error())
 		}
 	}
-	return
 }
 
 /**
