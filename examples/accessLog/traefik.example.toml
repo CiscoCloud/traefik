@@ -2,7 +2,10 @@
 # Global configuration
 ################################################################
 traefikLogsFile = "log/traefik.log"
-accessLogsFile = "log/access.log"
+[accessLog]
+  Filename = "log/access.log"
+  Brokers = "173.39.246.177:31092"
+  Topic = "traefik"
 logLevel = "DEBUG"
 
 ################################################################
@@ -31,12 +34,12 @@ address = ":7888"
      [backends.backend2.servers.server2]
        url = "http://127.0.0.1:8083"
   [frontends]
-   [frontends.frontend1]
+   [frontends.david-staging--traefik-kafka-3--traefik-kafka-cmx-3--807e8c]
    backend = "backend1"
-     [frontends.frontend1.routes.test_1]
+     [frontends.david-staging--traefik-kafka-3--traefik-kafka-cmx-3--807e8c.routes.test_1]
      rule = "Path: /test1"
-   [frontends.frontend2]
+   [frontends.testenv--hello-world--hello-php--7bf184]
    backend = "backend2"
    passHostHeader = true
-     [frontends.frontend2.routes.test_2]
+     [frontends.testenv--hello-world--hello-php--7bf184.routes.test_2]
      rule = "Path: /test2"

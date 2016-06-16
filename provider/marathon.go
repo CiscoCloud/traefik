@@ -120,6 +120,8 @@ func (provider *Marathon) loadMarathonConfig() *types.Configuration {
 		"getEntryPoints":     provider.getEntryPoints,
 		"getFrontendRule":    provider.getFrontendRule,
 		"getFrontendBackend": provider.getFrontendBackend,
+		"getLabel":           provider.getLabel,
+		"getLabels":          provider.getLabels,
 		"replace":            replace,
 	}
 
@@ -261,6 +263,14 @@ func (provider *Marathon) getLabel(application marathon.Application, label strin
 		}
 	}
 	return "", errors.New("Label not found:" + label)
+}
+
+func (provider *Marathon) getLabels(application marathon.Application) (labels []string) {
+	labels = []string{}
+	for key, _ := range application.Labels {
+		labels = append(labels, key)
+	}
+	return
 }
 
 func (provider *Marathon) getPort(task marathon.Task, applications []marathon.Application) string {

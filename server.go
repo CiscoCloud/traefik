@@ -77,7 +77,7 @@ func NewServer(globalConfiguration GlobalConfiguration) *Server {
 	currentConfigurations := make(configs)
 	server.currentConfigurations.Set(currentConfigurations)
 	server.globalConfiguration = globalConfiguration
-	server.loggerMiddleware = middlewares.NewLogger(globalConfiguration.AccessLogsFile)
+	server.loggerMiddleware = middlewares.NewLogger(globalConfiguration.AccessLog)
 
 	return server
 }
@@ -372,7 +372,7 @@ func (server *Server) loadConfig(configurations configs, globalConfiguration Glo
 	redirectHandlers := make(map[string]http.Handler)
 
 	backends := map[string]http.Handler{}
-	backend2FrontendMap := map[string]string{}
+	backend2FrontendMap := map[string]*middlewares.FrontendInfo{}
 	for _, configuration := range configurations {
 		frontendNames := sortedFrontendNamesForConfig(configuration)
 		for _, frontendName := range frontendNames {
@@ -434,7 +434,7 @@ func (server *Server) loadConfig(configurations configs, globalConfiguration Glo
 								if err != nil {
 									return nil, err
 								}
-								backend2FrontendMap[url.String()] = frontendName
+								backend2FrontendMap[url.String()] = &middlewares.FrontendInfo{frontendName, frontend}
 								log.Debugf("Creating server %s at %s with weight %d", serverName, url.String(), server.Weight)
 								if err := rebalancer.UpsertServer(url, roundrobin.Weight(server.Weight)); err != nil {
 									return nil, err
@@ -448,7 +448,7 @@ func (server *Server) loadConfig(configurations configs, globalConfiguration Glo
 								if err != nil {
 									return nil, err
 								}
-								backend2FrontendMap[url.String()] = frontendName
+								backend2FrontendMap[url.String()] = &middlewares.FrontendInfo{frontendName, frontend}
 								log.Debugf("Creating server %s at %s with weight %d", serverName, url.String(), server.Weight)
 								if err := rr.UpsertServer(url, roundrobin.Weight(server.Weight)); err != nil {
 									return nil, err

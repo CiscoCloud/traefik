@@ -67,6 +67,10 @@ func TestMarathonLoadConfig(t *testing.T) {
 					{
 						ID:    "/test",
 						Ports: []int{80},
+						Labels: map[string]string{
+							"lbl1": "val1",
+							"lbl2": "val2",
+						},
 					},
 				},
 			},
@@ -89,6 +93,10 @@ func TestMarathonLoadConfig(t *testing.T) {
 						`route-host-test`: {
 							Rule: "Host:test.docker.localhost",
 						},
+					},
+					Labels: map[string]string{
+						"lbl1": "val1",
+						"lbl2": "val2",
 					},
 				},
 			},

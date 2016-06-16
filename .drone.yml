@@ -1,0 +1,39 @@
+image: golang:1.6
+git:
+  path: github.com/CiscoCloud/traefik
+clone:
+  path: github.com/CiscoCloud/traefik
+build:
+  image: golang:1.6
+  commands:
+    - echo "build commands"
+    - pwd
+    - go get github.com/jteeuwen/go-bindata/...
+    - curl -kL https://github.com/Masterminds/glide/releases/download/0.10.2/glide-0.10.2-linux-amd64.tar.gz -o glide-0.10.2-linux-amd64.tar.gz
+    - tar -xvf glide-0.10.2-linux-amd64.tar.gz 
+    - mv linux-amd64/glide /usr/local/bin
+    - mkdir static
+    - touch static/.placeholder
+    - glide install
+    - go generate
+    - mkdir -p $GOPATH/src/github.com/containous
+    - ln -s `pwd` $GOPATH/src/github.com/containous/traefik
+    - go build github.com/containous/traefik
+    - ls -l traefik
+    - echo "no test command"
+    
+publish:
+  bintray:
+    username: shipped-build
+    api_key: c11f5a70274e54ac9009f9200bf0dd73192cd35c
+    artifacts:
+      - file: traefik
+        owner: shippedrepos
+        type: bin
+        repository: traefik
+        package: executables
+        version: 0.1
+        target: traefik
+        publish: true
+        override: true
+    
