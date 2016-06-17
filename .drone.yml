@@ -20,7 +20,7 @@ build:
     - ln -s `pwd` $GOPATH/src/github.com/containous/traefik
     - go build github.com/containous/traefik
     - ls -l traefik
-    - echo "no test command"
+    - echo "no test commands"
     
 publish:
   bintray:
