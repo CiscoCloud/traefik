@@ -13,8 +13,7 @@ build:
     - tar -xvf glide-0.10.2-linux-amd64.tar.gz 
     - mv linux-amd64/glide /usr/local/bin
     - mkdir static
-    - touch static/.placeholder
-    - glide install
+    # glide install
     - go generate
     - mkdir -p $GOPATH/src/github.com/containous
     - ln -s `pwd` $GOPATH/src/github.com/containous/traefik

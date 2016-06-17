@@ -7,7 +7,6 @@ log
 traefik
 traefik.toml
 *.test
-vendor/
 static/
 .vscode/
 site/
