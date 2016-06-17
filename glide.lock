@@ -1,5 +1,5 @@
-hash: 5a6dbc30a69abd002736bd5113e0f783c448faee20a0791c724ec2c3c1cfb8bb
-updated: 2016-06-03T18:11:43.839017153+02:00
+hash: a93974dc568441d8cc8542f34ae05c1b5ae690ed90d503551eb6dd45e34f5b98
+updated: 2016-06-17T00:40:49.434823548Z
 imports:
 - name: github.com/boltdb/bolt
   version: dfb21201d9270c1082d5fb0f07f500311ff72f18
@@ -90,12 +90,22 @@ imports:
   - store/zookeeper
 - name: github.com/donovanhide/eventsource
   version: fd1de70867126402be23c306e1ce32828455d85b
+- name: github.com/eapache/go-resiliency
+  version: b86b1ec0dd4209a588dc1285cdd471e73525c0b3
+  subpackages:
+  - breaker
+- name: github.com/eapache/go-xerial-snappy
+  version: bb955e01b9346ac19dc29eb16586c90ded99a98c
+- name: github.com/eapache/queue
+  version: ded5959c0d4e360646dc9e9908cff48666781367
 - name: github.com/elazarl/go-bindata-assetfs
   version: 57eb5e1fc594ad4b0b1dbea7b286d299e0cb43c2
 - name: github.com/gambol99/go-marathon
   version: ade11d1dc2884ee1f387078fc28509559b6235d1
 - name: github.com/go-check/check
   version: 4f90aeace3a26ad7021961c297b22c42160c7b25
+- name: github.com/golang/snappy
+  version: d9eb7a3d35ec988b8585d4a0068e462c27d28380
 - name: github.com/google/go-querystring
   version: 9235644dd9e52eeae6fa48efd539fdc351a0af53
   subpackages:
@@ -113,6 +123,8 @@ imports:
   subpackages:
   - coordinate
   - serf
+- name: github.com/klauspost/crc32
+  version: 19b0b332c9e4516a6370a0456e6182c3b5036720
 - name: github.com/libkermit/docker
   version: 3b5eb2973efff7af33cfb65141deaf4ed25c6d02
 - name: github.com/libkermit/docker-check
@@ -151,6 +163,8 @@ imports:
   version: 4b20de542e40ed2b89d65ae195fc20a330919b92
   subpackages:
   - zk
+- name: github.com/Shopify/sarama
+  version: 19422bf56497c7698aff8619a60fb020113080a5
 - name: github.com/Sirupsen/logrus
   version: f3cfb454f4c209e6668c95216c4744b8fddb2356
 - name: github.com/streamrail/concurrent-map
