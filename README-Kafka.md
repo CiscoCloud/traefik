@@ -1,26 +1,53 @@
 ## Traefik Metrics in Kafka
 #### Overview
-This repository contains updates to Traefik supporting writing metrics to Kafka.  Metrics are in [Monasco format](https://wiki.openstack.org/wiki/Monasca/Message_Schema#Metrics_Message).  A sample metric is:
+This repository contains updates to Traefik supporting writing metrics to Kafka.  Metrics are in [Monasco format](https://wiki.openstack.org/wiki/Monasca/Message_Schema#Metrics_Message).  See [HTTP Query (Traefik) Statistics](https://github.com/CiscoCloud/shipped-monitoring/blob/monitoring/docs/metricsList.md#http-query-traefik-statistics) for metric format.   Here are some sample metrics:
 
-    { 
-      "metric": {
-        "name":"elapsedMs-traefik",
-        "dimensions": {
-          "SHIPPED_ENVIRONMENT_ID":"70fe6d48-0622-11e6-bdad-0242ac110003",
-          "SHIPPED_ENVIRONMENT_NAME":"david-staging",
-          "SHIPPED_PROJECT_ID":"19c60964-0621-11e6-bd9b-0242ac110003",
-          "SHIPPED_PROJECT_NAME":"traefik-kafka-3",
-          "SHIPPED_SERVICE_ID":"3ab53f68-0621-11e6-bd9f-0242ac110003",
-          "SHIPPED_SERVICE_NAME":"traefik-kafka-cmx-3",
+    {
+        "metric": {
+            "name": "traefik.http_response.time_ms",
+            "dimensions": {
+                "SHIPPED_ENVIRONMENT_ID": "70fe6d48-0622-11e6-bdad-0242ac110003",
+                "SHIPPED_ENVIRONMENT_NAME": "david-staging",
+                "SHIPPED_PROJECT_ID": "19c60964-0621-11e6-bd9b-0242ac110003",
+                "SHIPPED_PROJECT_NAME": "traefik-kafka-3",
+                "SHIPPED_SERVICE_ID": "3ab53f68-0621-11e6-bd9f-0242ac110003",
+                "SHIPPED_SERVICE_NAME": "traefik-kafka-cmx-3",
+                "backend": "http://shipped-tx3-worker-003:19369",
+                "frontend": "david-fnichol-uhttpd",
+                "url": "/"
+            },
+            "timestamp": 1465819658000,
+            "value": 14
         },
-        "timestamp":1461198662000,
-        "value":161
-      },
-      "meta":{
-        "tenantId":"19c60964-0621-11e6-bd9b-0242ac110003",
-        "region":""
-      },
-      "creation_time":1461198662000
+        "meta": {
+            "tenantId": "19c60964-0621-11e6-bd9b-0242ac110003",
+            "region": ""
+        },
+        "creation_time": 1465819658000
+    }
+
+    {
+        "metric": {
+            "name": "traefik.http_status.2xx",
+            "dimensions": {
+                "SHIPPED_ENVIRONMENT_ID": "70fe6d48-0622-11e6-bdad-0242ac110003",
+                "SHIPPED_ENVIRONMENT_NAME": "david-staging",
+                "SHIPPED_PROJECT_ID": "19c60964-0621-11e6-bd9b-0242ac110003",
+                "SHIPPED_PROJECT_NAME": "traefik-kafka-3",
+                "SHIPPED_SERVICE_ID": "3ab53f68-0621-11e6-bd9f-0242ac110003",
+                "SHIPPED_SERVICE_NAME": "traefik-kafka-cmx-3",
+                "backend": "http://shipped-tx3-worker-003:19369",
+                "frontend": "david-fnichol-uhttpd",
+                "url": "/"
+            },
+            "timestamp": 1465819658000,
+            "value": 1
+        },
+        "meta": {
+            "tenantId": "19c60964-0621-11e6-bd9b-0242ac110003",
+            "region": ""
+        },
+        "creation_time": 1465819658000
     }
 
 These follow the layout described in [cAdvisor documentation](https://github.com/CiscoCloud/shipped-monitoring/blob/monitoring/docs/cAdvisor.md#monasca-metrics-format), except without containerId, containerName, and hostName, which are not available to Traefik (see [Metric Dimensions](#dimensions))
