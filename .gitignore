@@ -1,8 +1,8 @@
 /dist
-gen.go
+#gen.go
 .idea
 .intellij
-log
+#log
 *.iml
 traefik
 traefik.toml

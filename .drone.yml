@@ -8,13 +8,13 @@ build:
   commands:
     - echo "build commands"
     - pwd
-    - go get github.com/jteeuwen/go-bindata/...
+    # go get github.com/jteeuwen/go-bindata/...
     # curl -kL https://github.com/Masterminds/glide/releases/download/0.10.2/glide-0.10.2-linux-amd64.tar.gz -o glide-0.10.2-linux-amd64.tar.gz
     # tar -xvf glide-0.10.2-linux-amd64.tar.gz 
     # mv linux-amd64/glide /usr/local/bin
     # glide install
-    - mkdir static
-    - go generate
+    # mkdir static
+    # go generate
     - mkdir -p $GOPATH/src/github.com/containous
     - ln -s `pwd` $GOPATH/src/github.com/containous/traefik
     - go build github.com/containous/traefik
